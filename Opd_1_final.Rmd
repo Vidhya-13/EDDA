@@ -1,0 +1,419 @@
+---
+title: "EDDA Assignment 1"
+author: "Igor Mazurek, Nagul Ratna Pandian, Vidhya Narayanasamy"
+date: 'Group 66'
+output: pdf_document
+fontsize: 11pt
+highlight: tango
+---
+**Exercise 1:**
+```{r include=FALSE}
+bw <- read.csv("~/Study/Period4_2/EDDA/Assignments/1/birthweight.txt", sep="")
+```
+
+**1a)Normality Check of the data:**
+```{r fig.height=2.5, fig.width=3.5}
+qqnorm(bw$birthweight); boxplot(bw$birthweight);hist(bw$birthweight)
+```
+The QQ plot leans towards the direction of normality. As histogram and box plot gives more insight about the distribution of the data they were used as well.
+
+```{r}
+shapiro.test(bw$birthweight)
+```
+As a final check Shapiro-Wilk test was used. The p-value(0.8995) obtained was greater than 0.05 which implies that there is no strong evidence against normality. Hence we conclude the data is normally distributed.
+
+**Construct a bounded 96%-CI for mu:**
+```{r}
+n = 188; mu = mean(bw$birthweight); sig = sd(bw$birthweight)
+za = qnorm(0.98); 
+za1 = qt(0.98, df = n-1); #Feedback from TA
+err = za*(sig/sqrt(n))
+#za;
+za1
+#CI = c(lo_lim=mu-za*(sig/sqrt(n)), Up_lim=mu+za*(sig/sqrt(n))); CI
+CI1 = c(lo_lim=mu-za1*(sig/sqrt(n)), Up_lim=mu+za1*(sig/sqrt(n))); CI1 #Feedback from TA
+```
+The 96% confidence Interval for mu is calculated as [2808.817, 3017.768]
+**Evaluate the sample size**
+```{r}
+n_new = (za^2*sig^2)/50^2 ; n_new
+```
+The sample size needed at length 100 for 96% CI is 821(rounded to the closest integer)
+
+**Compute a bootstrap 96%-CI for mean and compare it to the above CI**
+```{r}
+B=1000
+Tstar=numeric(B)
+for(i in 1:B){
+Xstar=sample(bw$birthweight, replace=T)
+Tstar[i]=mean(Xstar)
+}
+Tstar2=quantile(Tstar,0.04); Tstar98=quantile(Tstar,0.96)
+sum(Tstar<Tstar2)
+c(2*mu-Tstar98,2*mu-Tstar2)
+```
+The bootstrap 96% confidence interval for the population mean is [2805.296, 3011.012] around its mean mu= 2913.293. The bootstrap CI is less than the previous CI.
+
+**1b)**
+```{r}
+t.test(bw$birthweight, alternative = "greater", mu=2800)
+```
+The null hypothesis is that mean is less than 2800. We reject the null hypothesis(mu is less than or equal to mu0) as p<0.05. The one sample t-test we used here is right sided. So we are dealing with one sided hypothesis, The confidence interval is connected to the problem of the hypothesis testing and it has to be one sided as well. Hence we get inf as the upper bound of the CI.
+
+```{r}
+binom.test(sum(bw$birthweight > 2800), n, p=0.5, alternative ="greater")
+wilcox.test(bw$birthweight, mu=2800, conf.int=T, conf.level = 0.95)
+```
+We used the sign test and wilcoxon sign test as they can be used for one sample normally distributed data. Similar to the t-test the null hypothesis is rejected in the sign tests as well, as the p values for both the sign tests are less than 0.05
+
+**1C) Powers of the t-test and sign test at mu > 2800:**
+```{r}
+B = 1000
+ttest <- numeric(B); sign <- numeric(B)
+for(j in 1:B) {
+  sample_values = rnorm(n, 2800, sig)
+  ttest[j] <- t.test(sample_values, mu=2800, alternative='greater')[[3]]
+  sign[j] <- binom.test(sum(sample_values>2800), n, p=0.5, alt='g')[[3]]
+}
+p_value = 0.05
+print("Power of the t-test"); print(sum(ttest < p_value)/B)
+print("Power of the sign test"); print(sum(sign < p_value)/B)
+s <- t.test(sample_values, mu=2800, alternative='greater'); s
+```
+Power is the probability of rejecting H0 correctly and it depends on the amount of data and the probability(type2error). In this case the t-test rejects H0 more effectively than the sign test.
+
+**1d)**
+```{r}
+t1 = sum(bw$birthweight< 2600)
+p_est = mean(bw$birthweight < 2600)
+phat_l = 0.25
+me = p_est - phat_l ;
+phat_r = me + p_est; 
+conf_int = c(phat_l=0.25, phat_r=me + p_est);conf_int
+z_clt = me/(sqrt(p_est*(1-p_est)/n));
+conf_level =1-2*(1-pnorm(z_clt)); conf_level
+```
+The right end $\hat{p_r}$ of the confidence interval is 0.4096. The whole confidence interval is [0.250, 0.4096] and the confidence level is 0.990
+
+**1e)**
+```{r}
+prop.test(c(34,61), c(62,126))
+```
+As the p value is greater than 0.05 the null hypothesis is not rejected which implies that the expert's claim (mean weight is different for male and female babies) is not true.
+
+**Exercise 2**
+**2a)**
+```{r include=FALSE}
+chl <- read.table("~/Study/Period4_2/EDDA/Assignments/1/cholesterol.txt", quote="\"", comment.char="")
+```
+**Plot of the dataset:**
+```{r echo=FALSE, fig.height= 3.75}
+plot(1:length(chl[, 1]), chl[, 1], type = "b", pch=19, col = "blue", xlab = "individual", ylab = "cholesterol", ylim=c(0,10))
+lines(1:length(chl[, 2]), chl[, 2], pch=19, col = "red", type = "b", lty=2)
+legend("topleft", legend=c("Before", "After"), col=c("blue", "red"), lty = 1:3, cex=0.7)
+```
+**Normality Check:**
+```{r}
+par(mfrow=c(1,2))
+qqnorm(chl$Before); qqnorm(chl$After8weeks)
+boxplot(chl$Before);boxplot(chl$After8weeks)
+hist(chl$Before);hist(chl$After8weeks)
+```
+```{r}
+shapiro.test(chl$Before); shapiro.test(chl$After8weeks)
+```
+The QQ plot leans towards the direction of normality. As histogram and box plot gives more insight about the distribution of the data they were used as well. As a final check Shapiro-Wilk test was used.p-values(Before = 0.9675, After8weeks =0.9183) obtained was greater than 0.05. There is no strong evidence against normality. Hence we concluded that the data is normally distributed. There are no inconsistencies such as outliers in the data as visible in the boxplot.
+
+**Correlation between 'Before' and 'After8weeks':**
+```{r fig.height=4}
+round(cor(chl),3)
+pairs(chl)
+
+cor.test(chl$Before, chl$After8weeks) #From the feedback of TA - Pearson's correlation test 
+cor.test(chl$Before, chl$After8weeks, method = "spearman")
+```
+The correlation between the columns 'before' and 'After8weeks' is calculated as 0.991 which implies they are correlated and its also clear from the plot above.
+
+**2b)**
+```{r}
+t.test(chl$Before,chl$After8weeks, paired=TRUE, alternative = "two.sided")
+wilcox.test(chl$Before,chl$After8weeks, paired=TRUE, alternative = "two.sided")
+```
+The data is matched pair as the values in both columns are obtained from the same individual at different conditions. We used the t-test and the wilcox test as they are suitable tests for matched pair data.  The permutation test is applicable for two paired samples as it is an alternate to wilcoxon signed rank test. The p-value(0.63) obtained in permutation test is greater than 0.05 which implies there is no difference between the distributions of the two columns.
+
+```{r include=FALSE}
+mystat=function(x,y) {mean(x-y)}
+B=1000; tstar=numeric(B);
+for (i in 1:B) {
+ chlstar=t(apply(cbind(chl[,1],chl[,2]),2,sample))
+        tstar[i]=mystat(chlstar[,1],chlstar[,2]) }
+myt=mystat(chl[,1],chl[,2]); 
+pl=sum(tstar<myt)/B;pr=sum(tstar>myt)/B
+p=2*min(pl,pr); p
+```
+```{r include=FALSE}
+hist(tstar)
+lines(rep(myt,2),c(0,20),col="red",lwd=2)
+```
+**2c)**
+```{r}
+theta_hat = 2*mean(chl[, 2]) - 3; theta_hat
+n = length(chl[,2]); std_dev = sd(chl[,2])
+alpha = 0.05; t_alpha = qt(1-alpha/2, df=n) #t_alpha = qnorm(1-alpha/2)
+c((theta_hat-t_alpha*std_dev/sqrt(n)), (theta_hat+t_alpha*std_dev/sqrt(n)))
+```
+The $\hat{\theta}$ is estimated as 8.558 and the 95% CI for ${\theta}$ is [8.012, 9.103]. Yes the CI can be improved by bootstrap resampling. In general, CI  can be improved if we have a larger dataset.
+
+**2d)**
+```{r, echo=TRUE, fig.height=2.5}
+nsamples = 1000;
+thetas = seq(3, 12, by = .01)
+t = max(chl$After8weeks)
+p_vals = numeric(length(thetas));
+for (i in 1:length(thetas)) {
+  res = replicate(nsamples,max(runif(18,3, thetas[i])))
+  pl=sum(res<t)/nsamples
+  pr=sum(res>t)/nsamples
+  p_vals[i]=2*min(pl,pr)
+}
+plot(thetas, p_vals, type = "l", xlab = "theta", ylab = "p-value");
+abline(h = 0.05, col = "red");
+legend("topright", legend = c("p-value", "0.05"),
+       col = c("black", "red"), lty = c(1, 1));
+t = thetas[p_vals >.05]
+c(min(t), max(t))
+```
+The $\{theta}$ values for which the null hypothesis will not be rejected is between 7.68 and 8.78 which can be witnessed in the graph. Kolmogorov-Smirnov test cant be applied to this situation as it is a suitable test for two independent samples.
+
+```{r}
+#Feedback from TA: 
+ks.test(chl$Before, chl$After8weeks)
+```
+**2e)**
+```{r}
+case1 = binom.test(sum(chl[,2]<6),n,alt="l"); case1
+```
+pvalue (0.8811) is > 0.05 hence the null hypothesis cant be rejected i.e the median cholesterol level after 8 weeks of low fat diet is indeed less than 6.
+
+```{r}
+case2 = binom.test(sum(chl[,2]<4.5),n,p=0.25,alt="l");case2
+```
+p-value(0.3057) > 0.05 hence the null hypothesis is reject which implies the fraction of the cholesterol levels after 8 weeks of low fat diet less than 4.5 is at most 25%
+**Exercise 3:**
+
+**3a)**
+
+```{R include=FALSE}
+df <- read.csv("~/Study/Period4_2/EDDA/Assignments/1/diet.txt", sep="")
+```
+**Representation of the data and testing assumptions**
+```{r}
+# a)
+
+plot(df$preweight, df$weight6weeks, xlab="Pre weight", ylab="Weight 6 weeks", main="Scatterplot of Pre-weight vs. Weight 6 weeks")
+
+
+boxplot(weight6weeks ~ diet, data = df, xlab = "Diet", ylab = "Weight 6 weeks", main = "Boxplot of Weight 6 weeks by Diet")
+
+# Test the assumptions
+hist(df$weight6weeks - df$preweight)
+qqnorm(df$preweight - df$weight6weeks)
+qqline(df$preweight - df$weight6weeks)
+
+# Create a scatter plot of the differences against the pre-weight measurements
+plot(df$preweight, df$preweight - df$weight6weeks, 
+     xlab = "Pre-weight", ylab = "Weight loss", main = "Scatter plot of weight loss vs. pre weight")
+
+
+
+t.test(df$preweight-df$weight6weeks, df$diet, paired=TRUE)
+```
+P-value of the t-test is less than 0.05, so we can reject the null hypothesis that diet does not affect the weight loss. 
+
+**3b)**
+One-way ANOVA is used to test the effect of diet type on weightloss.
+```{r eval=FALSE, include=FALSE}
+weightlost = as.vector(df$preweight-df$weight6weeks) #creation of weightlost vector using preweight and weight after 6 weeks
+diettype <- ordered(df$diet, levels = c("1", "2", "3")) #making diet type a factor
+diettype <- factor(diettype, ordered="False")
+#diettype
+#is.factor(df$diet)
+#is.numeric(df$diet)
+#diettype
+#is.factor(diettype)
+#is.numeric(diettype)
+df$weightlost <- weightlost
+weightlostframe <- data.frame(weightlost, diettype) #creating a new dataframe with weight lost and diet type
+#is.factor(weightlostframe$diettype) #checking if it is a factor
+#is.numeric(weightlostframe$diettype) #checking if it is numeric
+weightlossaov = lm(weightlost ~ diettype, data = weightlostframe)
+#weightlossaov = lm(weightlost ~ gendertype +0, data = weightlostframe)
+#anova(weightlossaov)
+summary(weightlossaov)
+#confint(weightlossaov)
+qqnorm(residuals(weightlossaov)); plot(fitted(weightlossaov), residuals(weightlossaov))
+```
+
+```{r}
+weightlost = as.vector(df$preweight-df$weight6weeks)
+diettype <- ordered(df$diet, levels = c("1", "2", "3")) 
+diettype <- factor(diettype, ordered="False")
+df$weightlost <- weightlost
+weightlostframe <- data.frame(weightlost, diettype) 
+weightlossaov = lm(weightlost ~ diettype, data = weightlostframe)
+summary(weightlossaov)
+qqnorm(residuals(weightlossaov)); plot(fitted(weightlossaov), residuals(weightlossaov))
+```
+
+Diet 3 is the best diet for weightloss. All the three diets lead to weight loss after 6 weeks.
+
+Kruskal Wallis can not be applied if we want to find out which diet was the best for weightloss. It can only tell us if the diets have a significant impact on weightloss.
+
+
+**3c)**
+
+```{r}
+df$diettype <- diettype
+gendertype <- ordered(df$gender, levels = c("0", "1")) #making gender type a factor
+gendertype <- factor(gendertype, ordered="False")
+df$gendertype <- gendertype
+#df <- na.omit(df)
+twoway <- lm(weightlost ~ diettype * gendertype , data = df)
+summary(twoway)
+qqnorm(residuals(twoway)); plot(fitted(twoway), residuals(twoway))
+interaction.plot( diettype, gendertype, weightlost, data = df)
+interaction.plot(  gendertype, diettype, weightlost, data =df)
+```
+
+From the interaction plots we can see that both the gender and diet together affects the weight loss. The two-way's results shows us both the gender and diet have a significant impact on the weight loss. The two factor's interaction together also has a signficant impact on weight loss as per the p-value from the two-way ANOVA.
+
+**3e)**
+Two-way ANOVA is preferred over one-way ANOVA since the gender is a factor that has a significant impact on weightloss of a person as per the p-value of the gender as a factor is greater than 0.05. Hence, the preferred model is two-way ANOVA. 
+
+```{r}
+diet1 <- twoway$coefficients[[1]]
+diet2 <- diet1 + twoway$coefficients[[2]]
+diet3 <- diet2 + twoway$coefficients[[3]]
+```
+The weight loss for diet 1 is 3.05, diet 2 is 2.6071, and diet 3 is 5.4371.
+
+**Exercise 4**
+
+**4a)**
+
+```{r}
+library(MASS)
+data("npk")
+
+rownames <- c(1:24)
+colnames  <- c("block", "N", "P", "K")
+random_plots <- matrix(ncol=4, nrow=24, dimnames = list(rownames, colnames))
+for(i in 1:6){
+  N = sample(c(1:4), 2, replace=FALSE)
+  P = sample(c(1:4), 2, replace=FALSE)
+  K = sample(c(1:4), 2, replace=FALSE)
+  for(j in 1:4){
+    random_plots[j+((i-1)*4),] <- c(i, is.element(j, N),is.element(j, P),is.element(j, K))
+  }
+}
+random_plots #Feedback from TA
+```
+
+**4b)**
+
+```{r echo=FALSE}
+par(mfrow = c(2,3))
+df_nitrogen_1 = dplyr::filter(npk, N == 1 & block ==1)
+df_nitrogen_2 = dplyr::filter(npk, N == 1 & block ==2)
+df_nitrogen_3 = dplyr::filter(npk, N == 1 & block ==3)
+df_nitrogen_4 = dplyr::filter(npk, N == 1 & block ==4)
+df_nitrogen_5 = dplyr::filter(npk, N == 1 & block ==5)
+df_nitrogen_6 = dplyr::filter(npk, N == 1 & block ==6)
+
+df_no_nitrogen_1 = dplyr::filter(npk, N == 0 & block == 1)
+df_no_nitrogen_2 = dplyr::filter(npk, N == 0 & block == 2)
+df_no_nitrogen_3 = dplyr::filter(npk, N == 0 & block == 3)
+df_no_nitrogen_4 = dplyr::filter(npk, N == 0 & block == 4)
+df_no_nitrogen_5 = dplyr::filter(npk, N == 0 & block == 5)
+df_no_nitrogen_6 = dplyr::filter(npk, N == 0 & block == 6)
+
+
+df_no_nitrogen = dplyr::filter(npk, N == 0)
+boxplot(df_nitrogen_1$yield, df_no_nitrogen_1$yield, names=c("yes", "no"), 
+        xlab = "nitrogen usage", ylab = "yield", ylim=c(0,80), main="Block 1")
+boxplot(df_nitrogen_2$yield, df_no_nitrogen_2$yield, names=c("yes", "no"), 
+        xlab = "nitrogen usage", ylab = "yield", ylim=c(0,80), main="Block 2")
+boxplot(df_nitrogen_3$yield, df_no_nitrogen_3$yield, names=c("yes", "no"), 
+        xlab = "nitrogen usage", ylab = "yield", ylim=c(0,80), main="Block 3")
+boxplot(df_nitrogen_4$yield, df_no_nitrogen_4$yield, names=c("yes", "no"), 
+        xlab = "nitrogen usage", ylab = "yield", ylim=c(0,80), main="Block 4")
+boxplot(df_nitrogen_5$yield, df_no_nitrogen_5$yield, names=c("yes", "no"), 
+        xlab = "nitrogen usage", ylab = "yield", ylim=c(0,80), main="Block 5")
+boxplot(df_nitrogen_6$yield, df_no_nitrogen_6$yield, names=c("yes", "no"), 
+        xlab = "nitrogen usage", ylab = "yield", ylim=c(0,80), main="Block 6")
+```
+
+```{r fig.height=2.5, fig.width=3.5}
+library(ggplot2)
+npk_mean <- aggregate(npk$yield, by = list(N = npk$N, block = npk$block), mean)
+ggplot(npk_mean, aes(x = block, y = x, fill = N)) +
+  geom_col(position = "dodge") + xlab('block') + ylab('Mean yield') + scale_fill_manual(values = c("red", "green"), name = "Nitrogen usage",labels = c("No", "Yes"))
+
+interaction.plot(npk$block,npk$N,npk$yield)
+```
+
+The purpose of taking the block factor into account is that each block may have different levels of sunlight or soil quality. Nitrogen may influence plants growing on the contrasting quality of soil differently. Distinguishing allows us to isolate the effect of nitrogen without outside factors.
+
+**4c)**
+
+```{r}
+yieldaov=lm(npk$yield ~ npk$block * npk$N); 
+anova(yieldaov)
+summary(yieldaov)
+```
+
+```{r}
+par(mfrow = c(1,3))
+qqnorm(residuals(yieldaov)); plot(fitted(yieldaov),residuals(yieldaov))
+boxplot(residuals(yieldaov))
+```
+
+We can't apply the Friedman test for this situation, because the Friedman test is a non-parametric test for data which is non-normally distributed, while our data is normally distributed the Anova would be more powerful test.
+
+**4d)**
+
+```{r}
+yieldaov3=lm(yield~N*P*K + block + block * N, data=npk)
+anova(yieldaov3)
+summary(yieldaov3)
+```
+
+```{r}
+yieldaov3=lm(yield~block * N, data=npk);  
+anova(yieldaov3)
+summary(yieldaov3)
+```
+
+```{r}
+yieldaov3=lm(yield~block * P, data=npk); 
+anova(yieldaov3)
+summary(yieldaov3)
+```
+
+```{r}
+yieldaov3=lm(yield~block * K, data=npk); 
+anova(yieldaov3)
+summary(yieldaov3)
+```
+
+Our favorite model is yield\~N\*P\*K + block as it shows the interaction between all soil additives.
+
+**4e)**
+
+```{r}
+library(lme4)
+yield_lmer=lmer(yield ~ N + (1|block), data = npk,REML=FALSE);
+summary(yield_lmer)
+```
+
+When we calculated the mean of npk\$block without nitrogen applied, it is equal to the intercept result of fixed effects in the lmer function, that is 52.067.

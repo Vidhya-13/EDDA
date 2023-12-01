@@ -1,0 +1,113 @@
+---
+title: "EDDA Assignment2"
+author: "Igor Mazurek, Naghul Rathina Pandian, Vidhya Narayanasamy"
+date: '2023-03-03'
+output:
+  html_document:
+    df_print: paged
+---
+
+**Exercise 1:**
+```{r include=FALSE}
+tree <- read.delim("~/Study/Period4_2/EDDA/Assignments/2/treeVolume.txt")
+```
+
+**1a)**
+One way anova was used to investigate whether the tree type influences volume
+```{r} 
+#Lecture9 slide9
+tree$type = factor(tree$type)
+mod = lm(volume~type, data = tree)
+```
+
+```{r}
+#H0 -> Tree type doesn't have an influence on Volume
+anova(mod)
+```
+As $p>0.05$, we concluded that the *tree type* doesn't have an influence on Volume.
+
+Yes the above ANOVA test can be related to t-test ((i.e) both the tests return the same p values) when the variance of the volumes of the two tree types are equal in t-test. As the factor **type** has 2 levels we used two sample t-test.
+
+```{r echo=FALSE}
+par(mfrow=c(1,2))
+qqnorm(residuals(mod)); qqline(residuals(mod))
+plot(fitted(mod),residuals(mod))
+```
+
+```{r}
+beech_volumes <- tree$volume[tree$type == "beech"]
+oak_volumes <- tree$volume[tree$type == "oak"]
+t.test(beech_volumes, oak_volumes, var.equal = TRUE)
+```
+Similar to ANOVA the t-test also yields the same value for volume. The volume of tree type *Beech* is **30.171** and the volume of tree type *Oak* is **35.25**
+
+**1b)**
+We created two models including all the explanatory variables where the first model includes the pairwise interaction between type and diameter in order to investigate the claim. 
+```{r}
+mod1 = lm(volume~height+type*diameter, data = tree)
+#mod1 =lm(volume ~ type * diameter + height, data = trees)
+anova(mod1)
+```
+The second model includes the pairwise interaction between type and height
+```{r}
+mod2 = lm(volume~diameter+type*height, data = tree)
+#mod2 = lm(volume ~ type * height + diameter, data = trees)
+anova(mod2)
+```
+For both the pairwise interactions $p > 0.05$ (although different p values), hence we concluded that both the pairwise interactions are not significant regardless of the tree type. Hence we created an additive model without the tree type.
+```{r}
+mod3 <- lm(volume~diameter+height, data=tree)
+drop1(mod3, test = "F")
+```
+The result of the additive model confirms that the diameter and height has a significant impact on volume.
+
+**1c)**
+From the results of 1b) the pairwise interactions (type and diameter, type and height) are not significant regardless of the tree type. Also the additive model confirms that the tree type doesnt have a significant effect but the diameter and height does.
+
+```{r}
+anova(mod3)
+summary(mod3)
+```
+This model has a high R-squared value with fewer explanatory variables included. This is the model we use to generate predictions because simpler models are typically selected. To be sure that the inferences we make from this model are valid, we must conduct one last test of its underlying assumptions.
+
+```{r}
+par(mfrow=c(1,2))
+qqnorm(residuals(mod3)); qqline(residuals(mod3))
+plot(fitted(mod3), residuals(mod3))
+```
+The graphs are close enough to conclude that the assumptions are valid.
+
+```{r}
+#mean(tree[tree$type == "beech", "volume"])
+avg_dia <- mean(tree$diameter)
+avg_height <- mean(tree$height)
+means <-  data.frame(diameter=(avg_dia), height=(avg_height))
+```
+
+```{r}
+predict(mod3, means, interval = "prediction", level = 0.95)
+```
+The volume for a tree with the (overall) average diameter and height is predicted to be **32.581**
+
+**1d)**
+The natural link between the response variable and the explanatory variables is given by $volume = pi*radius^2*height$ since the trunk of the tree is close to cylindrical shape.
+We transformed the explanatory variables by squaring them.
+```{r}
+tree$dia_sq <- (tree$diameter)^2
+tree$height_sq <- (tree$height)^2
+mod4 <- lm(volume~dia_sq+height_sq, data=tree)
+```
+
+```{r echo=FALSE}
+cat("Mean Squared error of the original model: ", mean(mod3$residuals^2), "\n")
+cat("Mean Squared error of the transformed model: ", mean(mod4$residuals^2), "\n")
+cat("R-squared of original model: ", summary(mod3)$r.squared, "\n")
+cat("R-squared of transformed model: ", summary(mod4)$r.squared, "\n")
+```
+
+```{r echo=FALSE}
+par(mfrow=c(1,2))
+qqnorm(residuals(mod4)); qqline(residuals(mod4))
+plot(fitted(mod4), residuals(mod4))
+```
+The transformed model performs better and is supported by the mean squared error and R-squared values. The graphs also confirm that the assumptions do not fail.
